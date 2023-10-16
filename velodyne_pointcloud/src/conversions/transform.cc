@@ -23,6 +23,8 @@
 #include <velodyne_pointcloud/pointcloudXYZIRT.h>
 #include <velodyne_pointcloud/organized_cloudXYZIRT.h>
 
+#include <fstream>
+
 namespace velodyne_pointcloud
 {
   /** @brief Constructor. */
@@ -66,6 +68,31 @@ namespace velodyne_pointcloud
                                           TimeStampStatusParam()));
 
   }
+
+void savePointCloudToBin(const sensor_msgs::PointCloud2& cloud_msg, const std::string& filename) {
+    std::ofstream outFile(filename, std::ios::out | std::ios::binary);
+    if (!outFile) {
+        ROS_ERROR("Failed to create binary file for writing.");
+        return;
+    }
+
+    for (size_t i = 0; i < cloud_msg.width * cloud_msg.height; i++) {
+        float x, y, z, intensity;
+
+        // Notice the change from cloud_msg->data to cloud_msg.data
+        memcpy(&x, &cloud_msg.data[i * cloud_msg.point_step + cloud_msg.fields[0].offset], sizeof(float));
+        memcpy(&y, &cloud_msg.data[i * cloud_msg.point_step + cloud_msg.fields[1].offset], sizeof(float));
+        memcpy(&z, &cloud_msg.data[i * cloud_msg.point_step + cloud_msg.fields[2].offset], sizeof(float));
+        memcpy(&intensity, &cloud_msg.data[i * cloud_msg.point_step + cloud_msg.fields[3].offset], sizeof(float));
+
+        outFile.write(reinterpret_cast<const char*>(&x), sizeof(x));
+        outFile.write(reinterpret_cast<const char*>(&y), sizeof(y));
+        outFile.write(reinterpret_cast<const char*>(&z), sizeof(z));
+        outFile.write(reinterpret_cast<const char*>(&intensity), sizeof(intensity));
+    }
+
+    outFile.close();
+}
 
   void Transform::reconfigure_callback(
       velodyne_pointcloud::TransformNodeConfig &config, uint32_t level)
@@ -140,7 +167,9 @@ namespace velodyne_pointcloud
       data_->unpack(scanMsg->packets[i], *container_ptr, scanMsg->header.stamp);
     }
     // publish the accumulated cloud message
-    output_.publish(container_ptr->finishCloud());
+    const sensor_msgs::PointCloud2 pc2 = container_ptr->finishCloud();
+    output_.publish(pc2);
+    savePointCloudToBin(pc2, "/home/zh/filename.bin");
 
     diag_topic_->tick(scanMsg->header.stamp);
     diagnostics_.update();
