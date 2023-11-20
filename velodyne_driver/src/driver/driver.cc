@@ -112,6 +112,7 @@ VelodyneDriver::VelodyneDriver(ros::NodeHandle node,
 
   // if we are timestamping based on the first or last packet in the scan
   private_nh.param("timestamp_first_packet", config_.timestamp_first_packet, false);
+  // std::cout << "front? " << config_.timestamp_first_packet << std::endl;
   if (config_.timestamp_first_packet)
     ROS_INFO("Setting velodyne scan start time to timestamp of first packet");
 
@@ -154,6 +155,7 @@ VelodyneDriver::VelodyneDriver(ros::NodeHandle node,
   // initialize diagnostics
   diagnostics_.setHardwareID(deviceName);
   const double diag_freq = packet_rate/config_.npackets;
+  // const double diag_freq = 10.0;
   diag_max_freq_ = diag_freq;
   diag_min_freq_ = diag_freq;
   ROS_INFO("expected frequency: %.3f (Hz)", diag_freq);
@@ -248,6 +250,9 @@ bool VelodyneDriver::poll(void)
         {
           // keep reading until full packet received
           int rc = input_->getPacket(&scan->packets[i], config_.time_offset);
+          // if (i == 0) {
+          //   std::cout << "curr time at i==0 is: "<<scan->packets[i].stamp.sec<<"."<<scan->packets[i].stamp.nsec<<std::endl;
+          // }
           if (rc == 0) break;       // got a full packet?
           if (rc < 0) return false; // end of file reached?
         }
@@ -262,6 +267,9 @@ bool VelodyneDriver::poll(void)
   else{
     scan->header.stamp = scan->packets.back().stamp;
   }
+  // std::cout << "front? " << config_.timestamp_first_packet << std::endl;
+  // std::cout << "timestamp front: " << scan->packets.front().stamp << std::endl;
+  // std::cout << "timestamp back : " << scan->packets.back().stamp << std::endl;
   scan->header.frame_id = config_.frame_id;
   output_.publish(scan);
 

@@ -23,6 +23,8 @@
 #include <velodyne_pointcloud/pointcloudXYZIR.h>
 #include <velodyne_pointcloud/organized_cloudXYZIR.h>
 
+#include <fstream>
+
 namespace velodyne_pointcloud
 {
   /** @brief Constructor. */
@@ -126,6 +128,30 @@ namespace velodyne_pointcloud
     container_ptr->configure(config_.max_range, config_.min_range, config_.fixed_frame, config_.target_frame);
   }
 
+  void savePointCloudToBin(const sensor_msgs::PointCloud2& cloud_msg, const std::string& filename) {
+      std::ofstream outFile(filename, std::ios::out | std::ios::binary);
+      if (!outFile) {
+          ROS_ERROR("Failed to create binary file for writing.");
+          return;
+      }
+
+      for (size_t i = 0; i < cloud_msg.width * cloud_msg.height; i++) {
+          float x, y, z, intensity;
+
+          // Notice the change from cloud_msg->data to cloud_msg.data
+          memcpy(&x, &cloud_msg.data[i * cloud_msg.point_step + cloud_msg.fields[0].offset], sizeof(float));
+          memcpy(&y, &cloud_msg.data[i * cloud_msg.point_step + cloud_msg.fields[1].offset], sizeof(float));
+          memcpy(&z, &cloud_msg.data[i * cloud_msg.point_step + cloud_msg.fields[2].offset], sizeof(float));
+          memcpy(&intensity, &cloud_msg.data[i * cloud_msg.point_step + cloud_msg.fields[3].offset], sizeof(float));
+
+          outFile.write(reinterpret_cast<const char*>(&x), sizeof(x));
+          outFile.write(reinterpret_cast<const char*>(&y), sizeof(y));
+          outFile.write(reinterpret_cast<const char*>(&z), sizeof(z));
+          outFile.write(reinterpret_cast<const char*>(&intensity), sizeof(intensity));
+      }
+
+      outFile.close();
+  }
   /** @brief Callback for raw scan messages.
    *
    *  @pre TF message filter has already waited until the transform to
@@ -150,6 +176,12 @@ namespace velodyne_pointcloud
     }
     // publish the accumulated cloud message
     output_.publish(container_ptr->finishCloud());
+
+    // std::cout << "scanMsg->header.stamp = "<<scanMsg->header.stamp << std::endl;
+
+    // const sensor_msgs::PointCloud2 pc2 = container_ptr->finishCloud();
+    // output_.publish(pc2);
+    // savePointCloudToBin(pc2, "/home/zh/filename.bin");
 
     diag_topic_->tick(scanMsg->header.stamp);
     diagnostics_.update();

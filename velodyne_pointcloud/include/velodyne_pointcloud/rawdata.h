@@ -54,6 +54,10 @@
 #include <velodyne_pointcloud/calibration.h>
 #include <velodyne_pointcloud/datacontainerbase.h>
 
+#include <fstream>
+#include <iostream>
+#include <yaml-cpp/yaml.h>
+
 namespace velodyne_rawdata
 {
 /**
@@ -187,6 +191,10 @@ private:
   }
   Config;
   Config config_;
+
+  std::ofstream vlp16_dis_at_0_degree_;
+  std::string vlp16_dis_at_0_degree_file_addr_;
+  YAML::Node yaml_;
 
   /**
    * Calibration file
