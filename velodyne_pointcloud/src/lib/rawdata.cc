@@ -611,7 +611,8 @@ inline float SQR(float val) { return val*val; }
             float y_coord = -x;
             float z_coord = z;
 
-            if (x_coord < 0) continue;
+            // if (x_coord < 0) continue;
+            // if (abs(y_coord) > 3.5) continue;
 
     
             /** Intensity Calculation */
