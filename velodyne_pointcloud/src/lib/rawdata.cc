@@ -46,7 +46,10 @@ inline float SQR(float val) { return val*val; }
   //
   ////////////////////////////////////////////////////////////////////////
 
-  RawData::RawData() {}
+  RawData::RawData() {
+    yaml_ = YAML::LoadFile("/home/daroslab/code/EventSLAM/config/slam_rgbd_dvx.yaml");
+    vlp16_dis_at_0_degree_file_addr_ = yaml_["rgbd_dataset_path"].as<std::string>() + "/Velodyne.txt";
+  }
   
   /** Update parameters: conversions and update */
   void RawData::setParameters(double min_range,
@@ -660,6 +663,9 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
 
     const raw_packet_t *raw = (const raw_packet_t *) &pkt.data[0];
 
+    float min_dis_angle_method(100.0f);
+    uint64_t min_dis_angle_stamp;
+
     for (int block = 0; block < BLOCKS_PER_PACKET; block++) {
 
       // ignore packets with mangled or otherwise different contents
@@ -727,6 +733,17 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
             float cos_rot_correction = corrections.cos_rot_correction;
             float sin_rot_correction = corrections.sin_rot_correction;
     
+            if (std::abs(std::asin(sin_vert_angle)+0.26179938)<0.01 && std::abs(azimuth_corrected)<30) {
+              // std::cout << "angle = " << std::acos(cos_vert_angle) << " " << std::asin(sin_vert_angle) << std::endl;
+              // std::cout << "dis = " << distance << std::endl;
+              // std::cout << "azimuth_corrected = " << azimuth_corrected << std::endl;
+              // std::cout << "pkt.stamp = " << pkt.stamp << std::endl;
+              if (distance < min_dis_angle_method) {
+                min_dis_angle_method = distance;
+                min_dis_angle_stamp = (static_cast<uint64_t>(pkt.stamp.sec) * 1e6) + (static_cast<uint64_t>(pkt.stamp.nsec) / 1e3);
+              }
+            }
+
             // cos(a-b) = cos(a)*cos(b) + sin(a)*sin(b)
             // sin(a-b) = sin(a)*cos(b) - cos(a)*sin(b)
             float cos_rot_angle = 
@@ -823,6 +840,14 @@ void RawData::unpack_vls128(const velodyne_msgs::VelodynePacket &pkt, DataContai
         }
         data.newLine();
       }
+    }
+    // std::cout << "vlp16_dis_at_0_degree_file_addr_ = " << vlp16_dis_at_0_degree_file_addr_ << std::endl;
+    // save mini depth
+    if (min_dis_angle_method < 100) {
+      vlp16_dis_at_0_degree_.open(vlp16_dis_at_0_degree_file_addr_, std::ios::app);
+      vlp16_dis_at_0_degree_ << std::fixed << std::setprecision(6) << min_dis_angle_stamp << " " << min_dis_angle_method << std::endl;
+      vlp16_dis_at_0_degree_.close();
+      // std::cout << "min_dis_angle_method = " << min_dis_angle_method << std::endl;
     }
   }
 } // namespace velodyne_rawdata
