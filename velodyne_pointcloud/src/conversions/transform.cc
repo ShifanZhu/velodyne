@@ -169,7 +169,7 @@ void savePointCloudToBin(const sensor_msgs::PointCloud2& cloud_msg, const std::s
     // publish the accumulated cloud message
     const sensor_msgs::PointCloud2 pc2 = container_ptr->finishCloud();
     output_.publish(pc2);
-    savePointCloudToBin(pc2, "/home/zh/filename.bin");
+    // savePointCloudToBin(pc2, "/home/zh/filename.bin");
 
     diag_topic_->tick(scanMsg->header.stamp);
     diagnostics_.update();
